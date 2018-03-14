@@ -43,6 +43,7 @@ ASSUME_ROLE=""
 USERADD_PROGRAM=""
 USERADD_ARGS=""
 S3_PATH=""
+AWS_REGION=""
 
 while getopts :hva:i:l:s:f: opt
 do
@@ -105,7 +106,7 @@ tmpdir=$(mktemp -d)
 
 cd "$tmpdir"
 
-git clone -b master https://github.com/widdix/aws-ec2-ssh.git
+git clone -b master https://github.com/brg-liuwei/aws-ec2-ssh.git
 
 cd "$tmpdir/aws-ec2-ssh"
 
@@ -146,6 +147,9 @@ if [ "${S3_PATH}" != "" ]
 then
     echo "S3_PATH=\"${S3_PATH}\"" >> $MAIN_CONFIG_FILE
 fi
+
+AWS_REGION=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep region | awk -F\" '{print $4}')
+echo "AWS_REGION=\"${AWS_REGION}\"" >> $MAIN_CONFIG_FILE
 
 ./install_configure_selinux.sh
 

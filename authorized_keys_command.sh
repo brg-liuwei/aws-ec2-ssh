@@ -5,7 +5,7 @@ if [ -z "$1" ]; then
 fi
 
 # check if AWS CLI exists
-if ! which aws; then
+if ! which aws > /dev/null 2>&1; then
     echo "aws executable not found - exiting!"
     exit 1
 fi
@@ -24,7 +24,7 @@ then
     --role-arn "${ASSUMEROLE}" \
     --role-session-name something \
     --query '[Credentials.SessionToken,Credentials.AccessKeyId,Credentials.SecretAccessKey]' \
-    --output text)
+    --output text --region ${AWS_REGION})
 
   AWS_ACCESS_KEY_ID=$(echo "${STSCredentials}" | awk '{print $2}')
   AWS_SECRET_ACCESS_KEY=$(echo "${STSCredentials}" | awk '{print $3}')
@@ -40,16 +40,17 @@ UnsaveUserName=${UnsaveUserName//".comma."/","}
 UnsaveUserName=${UnsaveUserName//".at."/"@"}
 
 if [ -z "${S3_PATH}" ]; then
-    aws iam list-ssh-public-keys --user-name "$UnsaveUserName" --query "SSHPublicKeys[?Status == 'Active'].[SSHPublicKeyId]" --output text | while read -r KeyId; do
-      aws iam get-ssh-public-key --user-name "$UnsaveUserName" --ssh-public-key-id "$KeyId" --encoding SSH --query "SSHPublicKey.SSHPublicKeyBody" --output text
+    aws iam list-ssh-public-keys --user-name "$UnsaveUserName" --query "SSHPublicKeys[?Status == 'Active'].[SSHPublicKeyId]" --output text  --region ${AWS_REGION} | while read -r KeyId; do
+      aws iam get-ssh-public-key --user-name "$UnsaveUserName" --ssh-public-key-id "$KeyId" --encoding SSH --query "SSHPublicKey.SSHPublicKeyBody" --output text --region ${AWS_REGION}
     done
 else
     KeyDir="${S3_PATH}/${UnsaveUserName}"
     tmpdir=$(mktemp -d)
-    aws s3 sync ${KeyDir} ${tmpdir} > /dev/null 2>&1
+    aws s3 sync ${KeyDir} ${tmpdir}  --region ${AWS_REGION} > /dev/null 2>&1
     pushd ${tmpdir} > /dev/null 2>&1
     for key in $(ls ${tmpdir}); do
         cat "$key"
     done
     popd > /dev/null 2>&1
+    rm -rf ${tmpdir}
 fi
